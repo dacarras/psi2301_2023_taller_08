@@ -1,0 +1,573 @@
+---
+title: "Taller R 08: interaccion"
+author: 'dacarras'
+output: html_document 
+---
+
+---
+
+# Introducción
+
+- Esta tarea contiene diferentes ejercicios para analizar datos empleando modelos de regresión. En esta tarea, vamos a ajustar una serie de modelos de regresión para evaluar la relación que poseen un conjunto de factores respecto al salario de profesores universitarios de 1981 (Rabe-Hesketh & Srondal, 2012, p247).
+
+- Los datos originales han sido expandidos de forma tal, que los resultados generados por los análisis de regresión a emplear, y con diferentes muestras aleatorias, se asemejen a los resultados producidos por los datos originales. En esta tarea solo incluímos un conjunto menor de variables del ejemplo orignal.
+
+- La base de datos que emplearemos contiene a la siguientes variables:
+
+```
+
+# Muestra de valores
+id_i     <int> 1, 2, 3, 4, 5, 6, 7, 8, 9
+lwage    <dbl> 1.17522335, 2.20148897, 1
+ethn     <int> 0, 0, 0, 2, 1, 0, 0, 0, 2
+union    <int> 1, 0, 0, 0, 0, 0, 0, 0, 1
+educ     <int> 15, 15, 12, 11, 12, 14, 1
+
+
+# Contenido de las variables
+id_i     = numero único identificador de las observaciones
+lwage    = salario en logaritmo
+ethn     = etnicidad (0 = blanco, 1 = africano-americano, 2 = hispánico/latino)
+union    = membresía al sindicato (0 = no, 1 = sí)
+educ     = años de educacion (min = 3, max = 16)
+
+```
+
+- El archivo que contiene los datos, es el siguiente:
+
+```
+
+salary_1981.csv
+
+```
+
+# Referencias
+
+Rabe-Hesketh, S., & Skrondal, A. (2012). Multilevel and Longitudinal Modeling Using Stata, Volumes I and II, Third Edition (3rd ed.). Stata Press.
+
+
+---
+
+# Ejercicio 1. Abrir datos.
+
+- Inserte los códigos para abrir la base de datos `salary_1981.csv`. Llame al objeto con sus datos `datos_full`. Considere utilizar la funcion `read.csv()`. 
+
+
+```{r}
+
+# abrir datos
+datos_full <- read.csv('salary_1981.csv')
+
+
+
+
+
+```
+
+# Ejercicio 2. Preparar datos.
+
+- Ejecute los siguientes comandos reemplazando el valor ‘123456789’ por su Rut para crear y guardar una submuestra de 1000 en total. No altere el resto de los comandos. Guardelo en un objeto denominado `datos_salarios`. 
+
+```{r}
+
+# Fijar el seed, permite obtener la misma muestra aleatoria, 
+#                cada vez que trabaje con el codigo.
+#                Es importante que los datos de su tarea,
+#                sean generados con su RUT.
+
+library(dplyr)
+set.seed(1234567890)
+datos_salarios <- datos_full %>%
+                  dplyr::slice_sample(n = 1000)
+
+
+
+
+
+
+```
+
+> Los siguientes ejercicios se realizan utilizando el objeto denominado "datos_salarios".
+
+# Ejercicio 3. Descriptivos
+
+- Antes de ajustar modelos de regresión, es una buena práctica tener información sobre las variables que serán analizadas.
+
+- Calcule las siguientes descriptivos para cada una de las variables incluidas:
+  - Valor mínimo de cada variable
+  - Valor maximo de cada variable
+  - Proporción de casos en cada valor para las variables categóricas (union, ethn)
+  - Mediana de las variables cuantitativas (lwage, educ)
+  - Media de las variables cuantitativas (lwage, educ)
+  - Desviación estándar de las variables cuantitativas (lwage, educ) 
+
+> Nota: el detalle de los descriptivos solicitados por variable también se especifica en la sección de respuestas.
+
+```{r}
+
+# descriptivos
+
+# lwage
+datos_salarios %>%
+summarize(
+min  = min(lwage, na.rm = TRUE),
+max  = max(lwage, na.rm = TRUE),
+med  = median(lwage, na.rm = TRUE),
+mean = mean(lwage, na.rm = TRUE),
+des  = sd(lwage, na.rm = TRUE)
+) %>%
+knitr::kable(., digits = 2)
+
+# educ
+datos_salarios %>%
+summarize(
+min  = min(educ, na.rm = TRUE),
+max  = max(educ, na.rm = TRUE),
+med  = median(educ, na.rm = TRUE),
+mean = mean(educ, na.rm = TRUE),
+des  = sd(educ, na.rm = TRUE)
+) %>%
+knitr::kable(., digits = 2)
+
+## freq
+dplyr::count(datos_salarios, educ)
+
+# ethn
+datos_salarios %>%
+summarize(
+min  = min(ethn, na.rm = TRUE),
+max  = max(ethn, na.rm = TRUE),
+prop_0 = mean(ethn == 0, na.rm = TRUE),
+prop_1 = mean(ethn == 1, na.rm = TRUE),
+prop_2 = mean(ethn == 2, na.rm = TRUE)
+) %>%
+knitr::kable(., digits = 2)
+
+## freq
+dplyr::count(datos_salarios, ethn)
+
+# union
+datos_salarios %>%
+summarize(
+min  = min(union, na.rm = TRUE),
+max  = max(union, na.rm = TRUE),
+prop_0 = mean(union == 0, na.rm = TRUE),
+prop_1 = mean(union == 1, na.rm = TRUE)
+) %>%
+knitr::kable(., digits = 2)
+
+## freq
+dplyr::count(datos_salarios, union)
+
+
+```
+
+- **Respuesta**
+  - lwage
+    + mínimo: -1.42
+    + máximo: 2.94
+    + mediana: 1.57
+    + media: 1.51
+    + desviación estándar: 0.51
+  - educ
+    + mínimo: 3
+    + máximo: 16
+    + mediana: 12
+    + media: 11.75
+    + desviación estándar: 1.76
+  - ethn
+    + mínimo: 0
+    + máximo: 2
+    + proporción de cada categoria: 0 = .73; 1 = .12; 2 = .15  
+  - union
+    + mínimo: 0
+    + máximo: 1
+    + proporción de cada categoria: 0 = .74; 1 = .26
+
+
+# Ejercicio 4
+
+- Ajuste un ANOVA factorial con el logaritmo del salario por hora (“lwage”) como variable de respuesta y dos predictores: la etnia del trabajador (“ethn”) y si pertenece a un sindicato (“union").
+
+- Incluya la interacción de ambos predictores en el modelo.
+
+- Interprete los resultados. En su respuesta, indique si hay interacción entre ambos factores incluidos.
+
+
+```{r}
+
+# Escriba y edite el codigo que permita resolver el ejercicio.
+
+aov(lwage ~ as.factor(ethn) + union + as.factor(ethn):union, data = datos_salarios) %>%
+anova()
+
+# Nota: es importante incluir a ethn como factor, o como conjunto de dummies.
+#       De lo contrario aov() asume a ethn como variable continua, en vez
+#       de considerar que son 3 categorias diferentes. Y como consecuencia,
+#       subestima los grados de libertad del factor.
+
+
+datos_salarios %>%
+mutate(et0 = dplyr::if_else(ethn == 0, 1, 0)) %>%
+mutate(et1 = dplyr::if_else(ethn == 1, 1, 0)) %>%
+mutate(et2 = dplyr::if_else(ethn == 2, 1, 0)) %>%
+aov(lwage ~ et1 + et2 + union + union:et1 + union:et2, data = .) %>%
+anova()
+
+# Nota: Notese que el modelo empleando a los dummies es equivalente
+#       al modelo incluyendo a la variable ethn como factor.
+#       En ambos casos la suma de cuadrados es igual (al inlcuir todas las categorias).
+
+
+```
+
+## Respuesta
+
+En el analisis de varianza (ANOVA) ajustado, incluyendo a los factores de etnia (ethn) de tres categorias, y de membresía sindical (union) de dos categorías se obtienen resultados significativos para los efectos principales respecto a cada factor. Es decir, que se esperan diferencias entre las categorias de cada factor sobre la variable de respuesta de logaritmo de salarios (lwage).
+
+Por su parte, el termino de interacción de ambos factores, etnia y membresia al sindicato tambien es significativo. Lo anterior implica que las diferencias de medias de los grupos generados por ambos factores (etnia y membresía sindical) son diferentes por sobre el azar.
+
+
+# Ejercicio 5
+
+- Ajuste una regresión múltiple evaluando el efecto sobre el logaritmo del salario por hora (“lwage”) de los predictores la etnia del trabajador (“ethn”) y si pertenece a un sindicato (“union").
+
+- Incluya la interacción de ambos predictores en el modelo.
+
+- Interprete cada uno de los coeficientes en los resultados.
+
+
+```{r}
+
+
+lm(lwage ~ as.factor(ethn) + union + as.factor(ethn):union, data = datos_salarios) %>%
+summary()
+
+# Nota: es importante incluir a ethn como factor, o como conjunto de dummies.
+#       De lo contrario lm() asume a ethn como variable continua, en vez
+#       de considerar que son 3 categorias diferentes. Y como consecuencia,
+#       subestima los grados de libertad del factor.
+
+
+datos_salarios %>%
+mutate(et0 = dplyr::if_else(ethn == 0, 1, 0)) %>%
+mutate(et1 = dplyr::if_else(ethn == 1, 1, 0)) %>%
+mutate(et2 = dplyr::if_else(ethn == 2, 1, 0)) %>%
+lm(lwage ~ et1 + et2 + union + union:et1 + union:et2, data = .) %>%
+summary()
+
+# Nota: Notese que el modelo empleando a los dummies es equivalente
+#       al modelo incluyendo a la variable ethn como factor.
+#       En ambos casos la suma de cuadrados es igual (al inlcuir todas las categorias).
+
+datos_salarios %>%
+mutate(et0 = dplyr::if_else(ethn == 0, 1, 0)) %>%
+mutate(et1 = dplyr::if_else(ethn == 1, 1, 0)) %>%
+mutate(et2 = dplyr::if_else(ethn == 2, 1, 0)) %>%
+lm(lwage ~ et1 + et2 + union + union:et1 + union:et2, data = .) %>%
+summary()
+
+
+datos_salarios %>%
+mutate(et0 = dplyr::if_else(ethn == 0, 1, 0)) %>%
+mutate(et1 = dplyr::if_else(ethn == 1, 1, 0)) %>%
+mutate(et2 = dplyr::if_else(ethn == 2, 1, 0)) %>%
+lm(lwage ~ et1 + et2 + union + union:et1 + union:et2, data = .) %>%
+report::report()
+
+```
+
+## Respuesta
+
+Ajustamos un modelo de regresión sobre el logaritmo de salarios (lwage), incluyendo a los factores de etnia (ethn), membresía sindical (unio) junto a términos de interacción entre ambos factores. Este modelo ajusta mejor a los datos que un modelo nulo (F(5, 994) = 14.10), p < .001), y explica una porción pequeña de la varianza de la varaible de respuesta (R2 = .07).
+
+Los coeficientes de las variables dummy de etnia, indican que las diferencias de salario entre los diferentes grupos etnicos no son significativas, cuando se consideran términos de interacción en el modelo. Mientras la media de logaritmo de salarios es de 1.47 para los profesores de etnia blanca y sin afiliación sindical; las diferencias de medias esperadas para los profesores afro-americanos es de -.10 (SE = 0.06, t(994) = -1.74, p = 0.082), y para los profesores hispano-latinos son de -0.06 (SE = .005, t(994) = -1.22, p = 0.22) sin afiliación sindical.
+
+Por su parte, el efecto principal de la membresia sindical resulta significativa. Los resultados del mdoelo indican que los profesores con afiliación sindical, presentan salarios mayores al resto de los profesores (b = 0.29, SE = 0.04, t(994) = 6.57, p < .001).
+
+Finalmente, los terminos de interacción indican que la relación entre etnia y afiliación sindical no beneficia a todos los profresores de la misma forma. Mientras la afiliacion sindical no presenta moderación de resultados para los profesores afroamericanos (b = 0.10, t(994) = 0.95, p = 0.342); si la presenta para los profesores hispano-latinos. Las medias de salarios de los profesores hispano-latinos, con afiliación sindical se espera que presenten salarios menores al resto de sus pares (beta =
+-0.32, t(994) = -3.17, p < 0.01).
+
+>Nota: se incluye en parentesis SE para los errores estandares de los estimados, por el ingles `standard error`.
+
+
+# Ejercicio 6
+
+
+- Ajuste un ANCOVA con al logaritmo del salario por hora (“lwage”) como variable de respuesta que solo considere los efectos principales de etnia del trabajador (“ethn”), si pertenece a un sindicato (“union") e incluya la educación de los trabajadores (“educ”). No incluya interacciones en el modelo. Interprete los resultados.
+
+>Nota: recuerde que los análisis de varianza (ANOVA y ANCOVA) se calculan los componentes de varianza en orden, de tal manera que es importante el orden por el cual se ingresan las covariables en el modelo.
+
+
+```{r}
+
+aov(lwage ~ educ + as.factor(ethn) + union, data = datos_salarios) %>%
+anova()
+
+# Nota: El orden en que se ingresan las variables en ANOVA es relevante
+#       para la función aov(). Las sumas de cuadrados se calculan de forma
+#       sequencial. De esta forma, si uno quiere obtener las sumas de cuadrados
+#       de ethn y union, despues que las de educ hayan sido removidas,
+#       educ debiera encontrarse primero en el orden de las covariables.
+
+```
+
+## Respuesta
+
+Se ajusta un modelo de analisis de covarianza (ANCOVA), incluyendo a años de escolaridad (educ) como covariable y a los factores de etnia (ethn) y afiliación sindical (union) de los profesores, sobre los logaritmos de sus salarios.
+
+Los resultados del modelo ajustado indican que hay una relación significativa de los años de escolaridad y los salarios de los profesores (F(1, 995) = 81.77, p < .001).
+
+Una vez controladas las diferencias de años escolaridad entre los profesores, no se observa una relación entre los grupos etnicos (ethn) y los salarios de los profesores (F(2, 995) = 0.71, p = 0.489)
+
+Finalmente, se una asociación entre la afiliación sindical entre los profesores y el salario percibido (F(1, 995) = 48.65, p < .001).
+
+
+# Ejercicio 7
+
+- Ajuste un modelo de regresión múltiple con el logaritmo del salario por hora (“lwage”) como variable de respuesta que considere los efectos principales de etnia del trabajador (“ethn”), si pertenece a un sindicato (“union") e incluya la educación de los trabajadores (“educ”). No incluya interacciones en el modelo. Interprete los resultados.
+
+- Interprete cada uno de los coeficientes en los resultados.
+
+
+```{r}
+
+lm(lwage ~ educ + as.factor(ethn) + union, data = datos_salarios) %>%
+summary()
+
+lm(lwage ~ educ + as.factor(ethn) + union, data = datos_salarios) %>%
+broom::tidy() %>%
+knitr::kable(., digits = 2)
+
+datos_salarios %>%
+mutate(et0 = dplyr::if_else(ethn == 0, 1, 0)) %>%
+mutate(et1 = dplyr::if_else(ethn == 1, 1, 0)) %>%
+mutate(et2 = dplyr::if_else(ethn == 2, 1, 0)) %>%
+lm(lwage ~ educ + et1 + et2 + union, data = .) %>%
+report::report()
+
+```
+
+## Respuesta
+
+`#....indicar su respuesta en las siguientes líneas, borrando este comentario.`
+
+Se ajustó un modelo de regresión sobre el logaritmo de los salarios de los profesores (lwage), incluyendo como covariables a los indicadores de etnia de los profesores (ethn), la afiliación a sindicato (union), además de la variable control de años de escolaridad (educ).
+
+Como conjunto, las tres variables explican hasta un 12% de la varianza de los logaritmos de salarios de los profesores (R2 = 0.12, F(4, 995) = 32.96, p < .001).
+
+Por su parte, los años de escolaridad presentan una asociación positiva con el salario de los profesores. Por cada año de escolaridad de diferencia entre los profesores se observa una diferencia positiva sobre el logaritmo de salarios entre los profesores (beta = 0.07, SE = .00, t(995) = 8.39, p < .001). Por otro lado, al incluir la variable anterior como control, no se observan diferencias asociadas a los indicadores de etnia de los profesores. La diferencia de salarios entre los profesores afro americanos y la etnia mayoritaria (profesores blancos) es de -0.03 (SE = 0.05, t(995) = -0.71, p = 0.480). De forma similar, la diferencia de salario esperada entre los profesores hispano-latinos es de -0.06 (beta = -0.06, SE = 0.04, t(995) = -1.40, p = 0.163).
+
+Finlamente, se observa una asociación positiva entre la afiliación sindical, y el logaritmo de salarios de los profesores. Los profesores con afiliación sindical presenta una diferencia en promedio de 0.24 sobre el logaritmo de salarios con respecto a sus pares (beta = 0.24, SE = 0.04, t(995) = 6.98, p < .001)
+
+
+
+# Ejercicio 8
+
+- El siguiente ejercicio consiste en re-parametrizar al modelo anterior. Los valores de `educ` se encuentran en años de escolaridad. Centre la variable de edad por su promedio, y re-ajuste el modelo anterior, cambiando a la variable `educ` por su versión centrada.
+
+- Para ajustar este nuevo modelo, primero calcule el promedio de educ a la muestra de datos que posee.
+
+- Luego, cree dentro de la base de datos de analisis, a la variable `educ_c`.
+
+- Ajuste el nuevo modelo.
+
+- Reinterprete el intercepto del modelo ajustado. Y explique porque los resultados generados ahora son diferentes a los del ejercicio 7.
+
+
+```{r}
+
+# Escriba y edite el codigo que permita resolver el ejercicio.
+
+mean_educ <- mean(datos_salarios$educ, na.rm = TRUE)
+
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+lm(lwage ~ educ_c + as.factor(ethn) + union, data = .) %>%
+summary()
+
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+mutate(educ_c = educ - mean_educ) %>%
+lm(lwage ~ educ_c + as.factor(ethn) + union, data = .) %>%
+broom::tidy() %>%
+knitr::kable(., digits = 2)
+
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+mutate(et0 = dplyr::if_else(ethn == 0, 1, 0)) %>%
+mutate(et1 = dplyr::if_else(ethn == 1, 1, 0)) %>%
+mutate(et2 = dplyr::if_else(ethn == 2, 1, 0)) %>%
+lm(lwage ~ educ_c + et1 + et2 + union, data = .) %>%
+report::report()
+
+
+
+
+```
+
+## Respuesta
+
+Ajustamos un modelo de regresión sobre el logaritmo de los salarios de los profesores, incluyendo a la variable de años de escolaridad como covariable centrada a la gran media, además de las variables indicadores de etnia y de afiliación sindical.
+
+El intercepto de este modelo, corresponde a la media del logaritmo del salario esperado de los profesores de la etnia mayoritaria (blancos), que no se encuentran afiliados a sindicato, a años de escolaridad media (11.75 años de escolaridad).
+
+Los resultados de este modelo son equivalente al modelo anterior, salvo por el punto estimado asociado al intercepto del mdoelo, el cual ahora es mayor. Los interceptos de los modelos de regresión corresponden al valor esperado de la variable de respuesta respecto al valor cero en todas las covariables incluidas en el modelo.
+
+El intercepto producido por este nuevo modelo, es diferente al anterior. El intercepto del modelo anterior correspondia al salario medio en logaritmo de los profesores de la etnia mayoritaria (blancos), sin afiliación sindical a cero año de escolaridad. En cambio, el intercepto de este último modelo, corresponde a la media de la variable de respuesta para le grupo de profesores de la etnia mayoritaria (blancos), sin afiliación sindical, a años medios de escolaridad (11.75 años).
+
+
+# Ejercicio 9
+
+- Empleando al modelo anterior (ejercicio 8), incluya los términos de interación entre etnicidad (ethn) y membresía al sindicato (union).
+
+- Empleando los resultados del modelo ajustados, conteste a la siguiente pregunta: **¿Pertenecer al sindicato es igual de beneficioso para todos los profesores condicional al grupo étnico?** En su respuesta indique sí o no; y luego en una línea separada copie la línea o sección de resultados que estaría interpretando para llegar a esta conclusión. Describa los resultados encontrados para sostener su conclusión empleando a los resultados obtenidos.
+
+
+```{r}
+
+# Escriba y edite el codigo que permita resolver el ejercicio.
+
+## Modelo ajustado
+mean_educ <- mean(datos_salarios$educ, na.rm = TRUE)
+
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+lm(lwage ~ educ_c + as.factor(ethn) + union  + as.factor(ethn):union, data = .) %>%
+summary()
+
+## Medias esperadas
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+lm(lwage ~ educ_c + as.factor(ethn) + union  + as.factor(ethn):union, data = .) %>%
+emmeans::emmeans(, 
+    specs = pairwise ~ as.factor(ethn):union, 
+    type = "response", 
+    adjust = "bonferroni"
+    )
+
+## Gráfico para ayudar la interpretación
+library(ggplot2)
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+lm(lwage ~ educ_c + as.factor(ethn) + union  + as.factor(ethn):union, data = .) %>%
+emmeans::emmeans(, 
+    specs = pairwise ~ as.factor(ethn):union, 
+    type = "response", 
+    adjust = "bonferroni"
+) %>%
+purrr::pluck('emmeans') %>%
+tibble::as_tibble() %>%
+ggplot(., aes(x =  factor(ethn), y = emmean, fill = factor(union))) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5, colour = "gray25")  +
+  geom_errorbar(aes(ymin=emmean-1.39*SE, ymax=emmean+1.39*SE), position = position_dodge(0.9), width = 0.25,
+                show.legend = FALSE, colour = "gray25") +
+  labs(x="Grupos Étnicos", y="Logaritmo de salarios") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  ylim(0,2)+
+  theme(legend.position = c(0.1, 0.9)) +
+  scale_fill_grey()
+
+```
+
+## Respuesta
+
+- Consclusión (Sí/No): No.
+- Línea de output interpretada:
+
+`as.factor(ethn)2:union -0.432997   0.098509  -4.396 1.22e-05 ***`
+
+- Descripción de resultados:
+
+Se observa una moderación negativa de la afiliación sindical para los profesores de etnia hispano-latina. Si bien la afiliación sindical es beneficiosa de forma general para todos los profesores, presentando un incremento esperado de 0.30 de logaritmo de salarios entre los profesores (beta = 0.31, SE = 0.04, t(993) = 7.32, p < .001), este incremento esperado se ve anulado por el termino de interación de etnia hipano latina, y afiliación sindical, que corresponde a diferencia de -0.43 sobre el logaritmo de los salarios (beta = -0.43, 95% CI [-0.63, -0.24], t(993) = -4.40, p < .001).
+
+Si comparamos las medias de logaritmo de salarios para todos los grupos generados por los factores de etnia, y afiliación sindical, aplicando ccorrección Bonferroni, podemos resaltar dos comparaciones de interés para el efecto de interación observado. Las medias entre los afiliados al sindicato no presentan diferencias de salarios entre los profesores de la etnia mayoritaria (blancos), con respecto a sus pares afro-americanos afiliados al sindicato. Mientras que sí hay una diferencia a favor de los profesores de la etnia mayoritaria (blancos), y los profesores hispano latinos (delta = 0.38, p < .001).
+
+Si ahora nos fijamos en las comparaciones entre sindicalizados y no sindicalizados por cada grupo etnico, observamos que los profesores hispano-latinos no presentan diferencia de salario (delta = 0.12, t(993) = 1.417, p = 1.00). En contraste, se observan diferencias positivas de salario para los profesores sindicalizados, tanto para los profesores blancos en contraste a sus pares no sindicalizados (delta = 0.31, t(993) = 7.33, p < .0001); como para los profesores afroamericanos sindicalizados (delta = 0.33, t(993) = 3.81, p < .01), en contraste a sus pares no sindicalizados.
+
+# Anexo
+
+Los datos empleados en el taller son ficticios. Los datos siguientes, son los datos empleados en el libro original.
+
+
+```{r}
+
+#---------------------------------------------------------
+# Datos originales del libro
+#---------------------------------------------------------
+
+datos_salarios <- read.csv('salarios8081.csv') %>%
+                  mutate(id_i = nr) %>%
+                  mutate(ethn = ethnicity) %>%
+                  dplyr::filter(year == 1981) %>%
+                  dplyr::select(
+                  id_i, lwage, ethn, union, educ) %>%
+                  dplyr::glimpse()
+
+#---------------------------------------------------------
+# Modelo ajustado
+#---------------------------------------------------------
+
+
+mean_educ <- mean(datos_salarios$educ, na.rm = TRUE)
+
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+lm(lwage ~ educ_c + as.factor(ethn) + union  + as.factor(ethn):union, data = .) %>%
+summary()
+
+#---------------------------------------------------------
+# Media esperadas (comparaciones multiples)
+#---------------------------------------------------------
+
+
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+lm(lwage ~ educ_c + as.factor(ethn) + union  + as.factor(ethn):union, data = .) %>%
+emmeans::emmeans(, 
+    specs = pairwise ~ as.factor(ethn):union, 
+    type = "response", 
+    adjust = "bonferroni"
+    )
+
+#---------------------------------------------------------
+# Grafico de medias con intervalos de confianza a 1.39
+#---------------------------------------------------------
+
+library(ggplot2)
+datos_salarios %>%
+mutate(educ_c = educ - mean_educ) %>%
+lm(lwage ~ educ_c + as.factor(ethn) + union  + as.factor(ethn):union, data = .) %>%
+emmeans::emmeans(, 
+    specs = pairwise ~ as.factor(ethn):union, 
+    type = "response", 
+    adjust = "bonferroni"
+) %>%
+purrr::pluck('emmeans') %>%
+tibble::as_tibble() %>%
+ggplot(., aes(x =  factor(ethn), y = emmean, fill = factor(union))) + 
+  geom_bar(stat = "identity", position = "dodge", alpha = 0.5, colour = "gray25")  +
+  geom_errorbar(aes(ymin=emmean-1.39*SE, ymax=emmean+1.39*SE), position = position_dodge(0.9), width = 0.25,
+                show.legend = FALSE, colour = "gray25") +
+  labs(x="Grupos Étnicos", y="Logaritmo de salarios") +
+  theme_bw() + 
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  ylim(0,2)+
+  theme(legend.position = c(0.1, 0.9)) +
+  scale_fill_grey()
+
+
+# Nota: se calculan los intervalos de confianza a 1.39; para
+#       facilitar las comparaciones multiples, y estas se asemejen
+#       a la prueba estadistica empleada, comparaciones de medias multiples,
+#       con corrección bonferroni (ver Goldstein & Healy, 1995).
+
+
+```
+
+
+# Referencias
+
+Goldstein, H., & Healy, M. J. R. (1995). The Graphical Presentation of a Collection of Means. Journal of Chemical Information and Modeling, 158(1), 175–177. https://doi.org/10.1017/CBO9781107415324.004
+
